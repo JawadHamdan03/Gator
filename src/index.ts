@@ -1,71 +1,56 @@
-import { setUser, readConfig } from "./config";
+import {
+  CommandsRegistry,
+  handlerAddFeed,
+  handlerAgg,
+  handlerFeeds,
+  handlerFollow,
+  handlerFollowing,
+  handlerBrowse,
+  handlerLogin,
+  handlerRegister,
+  handlerReset,
+  handlerUnfollow,
+  handlerUsers,
+  middlewareLoggedIn,
+  registerCommand,
+  runCommand,
+} from "./commands.js";
 
-
-
-type CommandHandler = (cmdName: string, ...args: string[]) => void;
-
-type CommandsRegistry = Record<string, CommandHandler>;
-
-
-function handlerLogin(cmdName: string, ...args: string[]): void {
-  if (args.length < 1) {
-    throw new Error("login command requires a username");
-  }
-
-  const username = args[0];
-  setUser(username);
-  console.log(`User set to ${username}`);
-}
-
-
-function registerCommand(
-  registry: CommandsRegistry,
-  cmdName: string,
-  handler: CommandHandler
-): void {
-  registry[cmdName] = handler;
-}
-
-function runCommand(
-  registry: CommandsRegistry,
-  cmdName: string,
-  ...args: string[]
-): void {
-  const handler = registry[cmdName];
-  if (!handler) {
-    throw new Error(`Unknown command: ${cmdName}`);
-  }
-  handler(cmdName, ...args);
-}
-
-
-
-////////////////////main
-
-function main() {
+async function main() {
   const registry: CommandsRegistry = {};
 
   registerCommand(registry, "login", handlerLogin);
+  registerCommand(registry, "register", handlerRegister);
+  registerCommand(registry, "reset", handlerReset);
+  registerCommand(registry, "users", handlerUsers);
+  registerCommand(registry, "feeds", handlerFeeds);
+  registerCommand(registry, "agg", handlerAgg);
+  registerCommand(registry, "browse", middlewareLoggedIn(handlerBrowse));
 
-  const args = process.argv.slice(2);
+  registerCommand(registry, "addfeed", middlewareLoggedIn(handlerAddFeed));
+  registerCommand(registry, "follow", middlewareLoggedIn(handlerFollow));
+  registerCommand(registry, "following", middlewareLoggedIn(handlerFollowing));
+  registerCommand(registry, "unfollow", middlewareLoggedIn(handlerUnfollow));
 
-  if (args.length < 1) {
+  const argv = process.argv.slice(2);
+  if (argv.length < 1) {
     console.error("Not enough arguments provided");
     process.exit(1);
   }
 
-  const [cmdName, ...cmdArgs] = args;
+  const cmdName = argv[0];
+  const args = argv.slice(1);
 
   try {
-    runCommand(registry, cmdName, ...cmdArgs);
+    await runCommand(registry, cmdName, ...args);
   } catch (err) {
-    if (err instanceof Error) {
-      console.error(err.message);
-    } else {
-      console.error("Unknown error");
-    }
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(msg);
     process.exit(1);
   }
+
+  process.exit(0);
 }
 
 main();
+

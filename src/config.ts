@@ -7,46 +7,26 @@ export type Config = {
   currentUserName?: string;
 };
 
-
-export function readConfig(): Config {
-  const configPath = getConfigFilePath();
-  const raw = fs.readFileSync(configPath, { encoding: "utf-8" });
-  const parsed = JSON.parse(raw);
-  return validateConfig(parsed);
-}
-
-export function setUser(username: string): void {
-  const cfg = readConfig();
-  cfg.currentUserName = username;
-  writeConfig(cfg);
-}
-
-
-
 function getConfigFilePath(): string {
   return path.join(os.homedir(), ".gatorconfig.json");
 }
 
 function writeConfig(cfg: Config): void {
-  const json = {
+  const raw = {
     db_url: cfg.dbUrl,
     current_user_name: cfg.currentUserName,
   };
 
-  fs.writeFileSync(
-    getConfigFilePath(),
-    JSON.stringify(json, null, 2),
-    { encoding: "utf-8" }
-  );
+  fs.writeFileSync(getConfigFilePath(), JSON.stringify(raw, null, 2), "utf-8");
 }
 
 function validateConfig(rawConfig: any): Config {
-  if (typeof rawConfig !== "object" || rawConfig === null) {
-    throw new Error("Config is not an object");
+  if (rawConfig === null || typeof rawConfig !== "object") {
+    throw new Error("Config must be an object");
   }
 
   if (typeof rawConfig.db_url !== "string") {
-    throw new Error("Config must contain db_url as a string");
+    throw new Error("Config must include db_url as a string");
   }
 
   if (
@@ -60,5 +40,17 @@ function validateConfig(rawConfig: any): Config {
     dbUrl: rawConfig.db_url,
     currentUserName: rawConfig.current_user_name,
   };
+}
+
+export function readConfig(): Config {
+  const cfgStr = fs.readFileSync(getConfigFilePath(), "utf-8");
+  const raw = JSON.parse(cfgStr); 
+  return validateConfig(raw);
+}
+
+export function setUser(userName: string): void {
+  const cfg = readConfig();
+  cfg.currentUserName = userName;
+  writeConfig(cfg);
 }
 
